@@ -34,14 +34,16 @@ import org.springframework.data.mongodb.repository.Query;
 @RestController
 @RequestMapping("/post")
 public class PostController {
-    String consumerKey = "aCY9VL94qOjfCDrcUNmawIMPm"; // The application's consumer key
-    String consumerSecret = "xmC2vaq5tb5BFQHdPKb3W2NAx5f71zKbfd8CuELzvPuNdAG26s"; // The application's consumer secret
-    String accessToken = "2574519362-mvAPOMWBsr9NuwuqLy3Se8zYVCYjAufG24R46fe"; // The access token granted after OAuth authorization
-    String accessTokenSecret = "Qx1YWFMZATbXmCqxBlsKUnTvBRLJbPPVUKUoQInRe2GAv"; // The access token secret granted after OAuth authorization
-
+//    String consumerKey = "aCY9VL94qOjfCDrcUNmawIMPm"; // The application's consumer key
+//    String consumerSecret = "xmC2vaq5tb5BFQHdPKb3W2NAx5f71zKbfd8CuELzvPuNdAG26s"; // The application's consumer secret
+//    String accessToken = "2574519362-mvAPOMWBsr9NuwuqLy3Se8zYVCYjAufG24R46fe"; // The access token granted after OAuth authorization
+//    String accessTokenSecret = "Qx1YWFMZATbXmCqxBlsKUnTvBRLJbPPVUKUoQInRe2GAv"; // The access token secret granted after OAuth authorization
+//
 
     private PostRepository repository;
-    Twitter twitter =  new TwitterTemplate(consumerKey,consumerSecret);
+    @Autowired
+    Twitter twitter ;
+//    Twitter twitter =  new TwitterTemplate(consumerKey,consumerSecret);
 
 
 

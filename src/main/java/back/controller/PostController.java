@@ -47,9 +47,9 @@ public class PostController {
 
 
 
-
-    @GetMapping(value = "/test/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public  Flux<Tweet> getAll (@PathVariable final String hashtag) {
+//faire une recherche  sur l'api twitter
+    @GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public  Flux<Tweet> getAllTweets (@PathVariable final String hashtag) {
        return Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets());
 
     }
@@ -69,7 +69,7 @@ public class PostController {
         postFlux
                 .thenMany(repository.findAll())
                 .subscribe(System.out::println);
- 
+
     }
 
     public PostController(PostRepository repository) {
@@ -95,6 +95,7 @@ public class PostController {
         System.out.println(" tag taga taga tagatagatagatagatagatgatagat");
         return repository.findPostByName(tag);
     }
+
     @GetMapping("/tag")
     public Flux<Post> findbytag(@RequestParam(name = "x") String tag) {
 //        Query query1 = new Query();

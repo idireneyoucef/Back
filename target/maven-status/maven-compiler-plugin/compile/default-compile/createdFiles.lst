@@ -1,6 +1,0 @@
-back\repository\PostRepository.class
-back\model\PostEvent.class
-back\controller\PostController.class
-back\BackApplication.class
-back\model\Hashtag.class
-back\model\Post.class

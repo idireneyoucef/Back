@@ -52,7 +52,21 @@ public class PostController {
 //faire une recherche  sur l'api twitter
     @GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public  Flux<Tweet> getAllTweets (@PathVariable final String hashtag) {
-       return Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets());
+        System.out.println( "je suis dans la méthode  getalltweets");
+        Flux<Tweet> tweets =  Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets());
+        tweets.flatMap( tweet -> {
+            System.out.println("azertyuioppppppppppppp");
+            Post p = new Post();
+            p.setName(tweet.getText());
+            System.out.println("======================= "+ p.getName());
+            repository.save(p);
+            System.out.println("------------------------ ");
+                    return tweets; });
+        System.out.println( tweets);
+   repository.findAll()
+                .subscribe(System.out::println);
+        return  tweets;
+
 
     }
 
@@ -86,7 +100,7 @@ public class PostController {
     @GetMapping("{id}")
     public Mono<ResponseEntity<Post>> getPost(@PathVariable String id) {
         return repository.findById(id)
-                .map(product -> ResponseEntity.ok(product))
+                .map(post -> ResponseEntity.ok(post))
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 

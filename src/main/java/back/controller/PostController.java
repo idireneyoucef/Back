@@ -50,41 +50,47 @@ public class PostController {
 
 
 //faire une recherche  sur l'api twitter
-    @GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public  Flux<Tweet> getAllTweets (@PathVariable final String hashtag) {
-        System.out.println( "je suis dans la méthode  getalltweets");
-        Flux<Tweet> tweets =  Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets());
-        tweets.flatMap( tweet -> {
-            System.out.println("azertyuioppppppppppppp");
-            Post p = new Post();
-            p.setName(tweet.getText());
-            System.out.println("======================= "+ p.getName());
-            repository.save(p);
-            System.out.println("------------------------ ");
-                    return tweets; });
-        System.out.println( tweets);
-   repository.findAll()
-                .subscribe(System.out::println);
-        return  tweets;
+@GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+public Flux<Tweet> getAllTweets(@PathVariable final String hashtag) {
+    System.out.println("je suis dans la méthode  getalltweets");
+    Flux<Tweet> tweets = Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets());
+    addTagsToPost(tweets);
+    return tweets;
 
-
-    }
+}
+public void addTagsToPost(Flux<Tweet> tweets ){
+    tweets.map(tweet -> {
+        Post p = new Post();
+        p.setCreatedAt(tweet.getCreatedAt());
+        p.setText(tweet.getText());
+        p.setTags(tweet.getEntities().getHashTags());
+        p.setUser(tweet.getUser());
+        System.out.println(" p .get all hashtag " + p.getTags());
+        repository.save(p).subscribe();
+        return tweet;
+    }).subscribe();
+    System.out.println("Tweets ==== = == = = = ="+tweets);
+    repository.findAll()
+            .subscribe(System.out::println);
+}
 
     @PostConstruct
     public void init() {
-        List<Hashtag>hashtags = new ArrayList();
-        hashtags.add(new Hashtag(null,"a"));
-        hashtags.add(new Hashtag(null,"n"));
-        hashtags.add(new Hashtag(null,"b"));
-    
-        Flux<Post> postFlux = Flux.just(
-                new Post(null, "Big Latte",hashtags),
-                new Post(null, "Big Decaf",hashtags),
-                new Post(null, "Green Tea",hashtags))
-                .flatMap(repository::save);
-        postFlux
-                .thenMany(repository.findAll())
-                .subscribe(System.out::println);
+//        List<Hashtag>hashtags = new ArrayList();
+//        hashtags.add(new Hashtag(null,"a"));
+//        hashtags.add(new Hashtag(null,"n"));
+//        hashtags.add(new Hashtag(null,"b"));
+//
+//        Flux<Post> postFlux = Flux.just(
+//                new Post(null, "Big Latte",hashtags),
+//                new Post(null, "Big Decaf",hashtags),
+//                new Post(null, "Green Tea",hashtags))
+//                .flatMap(repository::save);
+//        postFlux
+//                .thenMany(repository.findAll())
+//                .subscribe(System.out::println);
+
+        System.out.println(repository.findAll());
 
     }
 

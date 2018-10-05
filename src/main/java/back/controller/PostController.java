@@ -1,35 +1,22 @@
 package back.controller;
 
-import back.model.Hashtag;
 import back.model.Post;
 import back.repository.PostRepository;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.social.connect.Connection;
-import org.springframework.social.connect.ConnectionRepository;
-import org.springframework.social.oauth1.AuthorizedRequestToken;
-import org.springframework.social.oauth1.OAuth1Operations;
-import org.springframework.social.oauth1.OAuthToken;
-import org.springframework.social.twitter.api.SearchResults;
 import org.springframework.social.twitter.api.Tweet;
 import org.springframework.social.twitter.api.Twitter;
-import org.springframework.social.twitter.api.impl.TwitterTemplate;
-import org.springframework.social.twitter.connect.TwitterServiceProvider;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-
 import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.xml.ws.Response;
-
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.mongodb.core.ReactiveMongoOperations;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.reactive.function.server.ServerRequest;
+import org.springframework.web.reactive.function.server.ServerResponse;
 
 @RestController
 @RequestMapping("/post")
@@ -42,24 +29,45 @@ public class PostController {
 
     private PostRepository repository;
     @Autowired
-    Twitter twitter ;
+    Twitter twitter;
 //    Twitter twitter =  new TwitterTemplate(consumerKey,consumerSecret);
-
-
-
-
-
+public Mono<ServerResponse> getAllPost(ServerRequest request) {
+        Flux<Post> posts = repository.findAll(); 
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .body(posts, Post.class);
+    }
 //faire une recherche  sur l'api twitter
-@GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-public Flux<Tweet> getAllTweets(@PathVariable final String hashtag) {
-    System.out.println("je suis dans la méthode  getalltweets");
-    Flux<Tweet> tweets = Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets());
-    addTagsToPost(tweets);
-    return tweets;
+    @GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
+    public Flux<Tweet> getAllTweets(@PathVariable final String hashtag, ServerRequest request) { 
+        System.out.println(" testinnng"); 
+        Flux<Tweet> tweets = request.bodyToFlux(Tweet.class);
+        tweets = Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets()); 
+        addTagsToPost(tweets);
+        return tweets;
 
-}
-public void addTagsToPost(Flux<Tweet> tweets ){
-    tweets.map(tweet -> {
+    }
+
+    @DeleteMapping("/tweets/{id}")
+    public Mono<ResponseEntity<Void>> deleteTweet(@PathVariable(value = "id") String tweetId) { 
+        return repository.findById(tweetId)
+                .flatMap(existingPost
+                        -> repository.delete(existingPost)
+                        .then(Mono.just(new ResponseEntity<Void>(HttpStatus.OK)))
+                )
+                .defaultIfEmpty(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    public void addTagsToPost(Flux<Tweet> tweets ) {
+        tweets.flatMap(tweet -> {   
+            return ConvertTweetToPost(tweet);
+        }).subscribe();
+        System.out.println("Tweets ==== = == = = = =" + tweets.toString());
+        repository.findAll()
+                .subscribe(System.out::println);
+    }
+
+    public Mono<Post> ConvertTweetToPost(Tweet tweet) {
         Post p = new Post();
         p.setCreatedAt(tweet.getCreatedAt());
         p.setText(tweet.getText());
@@ -67,12 +75,8 @@ public void addTagsToPost(Flux<Tweet> tweets ){
         p.setUser(tweet.getUser());
         System.out.println(" p .get all hashtag " + p.getTags());
         repository.save(p).subscribe();
-        return tweet;
-    }).subscribe();
-    System.out.println("Tweets ==== = == = = = ="+tweets);
-    repository.findAll()
-            .subscribe(System.out::println);
-}
+        return repository.save(p);
+    }
 
     @PostConstruct
     public void init() {
@@ -126,48 +130,8 @@ public void addTagsToPost(Flux<Tweet> tweets ){
         return repository.findPostByTag(tag);
     }
 
-//    public List<Poste> getPostesBytext(String poste) {
-//
-//        Query query = new Query();
-//        query.addCriteria(Criteria.where("text").regex(poste));
-//        List<Poste> postes = mongoTemplate.find(query,Poste.class);
-//        return postes;
-//    }
-//    @PostMapping
-//    @ResponseStatus(HttpStatus.CREATED)
-//    public Mono<Post> savePost(@RequestBody Post post) {
-//        return repository.save(post);
-//    }
-//    @PutMapping("{id}")
-//    public Mono<ResponseEntity<Post>> updatePost(@PathVariable(value = "id") String id,
-//                                                       @RequestBody Post Post) {
-//        return repository.findById(id)
-//                .flatMap(existingProduct -> {
-//                    existingProduct.setName(Post.getName());
-//                    return repository.save(existingProduct);
-//                })
-//                .map(updatePost -> ResponseEntity.ok(updatePost))
-//                .defaultIfEmpty(ResponseEntity.notFound().build());
-//    }
-//    @DeleteMapping("{id}")
-//    public Mono<ResponseEntity<Void>> deletePost(@PathVariable(value = "id") String id) {
-//        return repository.findById(id)
-//                .flatMap(existingProduct ->
-//                        repository.delete(existingProduct)
-//                                .then(Mono.just(ResponseEntity.ok().<Void>build()))
-//                )
-//                .defaultIfEmpty(ResponseEntity.notFound().build());
-//    }
     @DeleteMapping
     public Mono<Void> deleteAllPost() {
         return repository.deleteAll();
     }
-
-//    @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-//    public Flux<PostE> getProductEvents() {
-//        return Flux.interval(Duration.ofSeconds(1))
-//                .map(val ->
-//                        new PostEvent(val, "Product Event")
-//                );
-//    }
 }

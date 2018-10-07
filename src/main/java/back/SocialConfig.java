@@ -30,7 +30,7 @@ public class SocialConfig {
 
 
 
-    @Bean
+    @Bean(name = "Twitter")
      public Twitter getTwitter(){
         return   new TwitterTemplate(consumerKey,consumerSecret);
     }

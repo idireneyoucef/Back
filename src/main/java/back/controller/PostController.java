@@ -2,6 +2,9 @@ package back.controller;
 
 import back.model.Post;
 import back.repository.PostRepository;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -13,7 +16,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
-import org.springframework.data.mongodb.core.ReactiveMongoOperations;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -31,25 +33,78 @@ public class PostController {
     @Autowired
     Twitter twitter;
 //    Twitter twitter =  new TwitterTemplate(consumerKey,consumerSecret);
-public Mono<ServerResponse> getAllPost(ServerRequest request) {
-        Flux<Post> posts = repository.findAll(); 
+
+    public Mono<ServerResponse> getAllPost(ServerRequest request) {
+        Flux<Post> posts = repository.findAll();
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON_UTF8)
                 .body(posts, Post.class);
     }
 //faire une recherche  sur l'api twitter
-    @GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
-    public Flux<Tweet> getAllTweets(@PathVariable final String hashtag, ServerRequest request) { 
-        System.out.println(" testinnng"); 
-        Flux<Tweet> tweets = request.bodyToFlux(Tweet.class);
-        tweets = Flux.fromIterable(twitter.searchOperations().search(hashtag).getTweets()); 
+// premier méthode tester le save  je le fait pour  chaque objet 
+
+    @GetMapping(value = "/firsttweets/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public Flux<Tweet> getAllTweets(@PathVariable final String hashtag) {
+        Flux<Tweet> tweets = Flux.fromIterable(twitter.searchOperations().search("#" + hashtag).getTweets());
+        //La fonction qui enrégistre les tweet dans la base des données 
         addTagsToPost(tweets);
         return tweets;
 
     }
+     public void addTagsToPost(Flux<Tweet> tweets) {
+        tweets.flatMap(tweet -> {
+//            Convertire le résultat en tweets  et enrégistré chacun d'eux dans la base des données
+            return ConvertTweetToPost(tweet);
+        });
+        System.out.println("Tweets ==== = == = = = =" + tweets.toString());
+        repository.findAll()
+                .subscribe(System.out::println);
+    }
 
+    
+
+    public Mono<Post> ConvertTweetToPost(Tweet tweet) {
+        Post p = new Post();
+        p.setCreatedAt(tweet.getCreatedAt());
+        p.setText(tweet.getText());
+        p.setTags(tweet.getEntities().getHashTags());
+        p.setUser(tweet.getUser());
+        repository.save(p).subscribe();
+        return Mono.just(p);
+    }
+    
+    
+  ///////////////////////////////////////////////////////////////////////////////
+    
+// 2émme  méthode le save pour tous les tweet en méme temps convertir et enrégistrer les tweet tous en méme temps
+    // bémole  j'ai utilisé ds list Stream    
+    @GetMapping(value = "/tweets/{hashtag}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public Flux<Post> getAllPostes(@PathVariable final String hashtag) {
+        Flux<Post> postes = ConvertAllTweetToPost(twitter.searchOperations().search("#" + hashtag).getTweets());
+        //La fonction qui enrégistre les tweet dans la base des données  
+        return postes;
+
+    }
+    public Flux<Post> ConvertAllTweetToPost(List<Tweet> tweets) {
+        List<Post> postes = new ArrayList();
+        tweets.stream()
+                .forEach(tw -> {
+                    Post p = new Post();
+                    p.setCreatedAt(tw.getCreatedAt());
+                    p.setText(tw.getText());
+                    p.setTags(tw.getEntities().getHashTags());
+                    p.setUser(tw.getUser());
+                    postes.add(p);
+                });
+        repository.saveAll(postes)
+                .subscribe();
+        return Flux.fromIterable(postes);
+    }
+ ///////////////////////////////////////////////////////////////////
+    
+    
     @DeleteMapping("/tweets/{id}")
-    public Mono<ResponseEntity<Void>> deleteTweet(@PathVariable(value = "id") String tweetId) { 
+    public Mono<ResponseEntity<Void>> deleteTweet(@PathVariable(value = "id") String tweetId) {
         return repository.findById(tweetId)
                 .flatMap(existingPost
                         -> repository.delete(existingPost)
@@ -58,25 +113,7 @@ public Mono<ServerResponse> getAllPost(ServerRequest request) {
                 .defaultIfEmpty(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    public void addTagsToPost(Flux<Tweet> tweets ) {
-        tweets.flatMap(tweet -> {   
-            return ConvertTweetToPost(tweet);
-        }).subscribe();
-        System.out.println("Tweets ==== = == = = = =" + tweets.toString());
-        repository.findAll()
-                .subscribe(System.out::println);
-    }
-
-    public Mono<Post> ConvertTweetToPost(Tweet tweet) {
-        Post p = new Post();
-        p.setCreatedAt(tweet.getCreatedAt());
-        p.setText(tweet.getText());
-        p.setTags(tweet.getEntities().getHashTags());
-        p.setUser(tweet.getUser());
-        System.out.println(" p .get all hashtag " + p.getTags());
-        repository.save(p).subscribe();
-        return repository.save(p);
-    }
+   
 
     @PostConstruct
     public void init() {
